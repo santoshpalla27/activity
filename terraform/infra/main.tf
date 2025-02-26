@@ -1,7 +1,7 @@
 module "vpc" {
   source = "./modules/vpc"
   cidr_block = "10.0.0.0/16"
-  project_name = "three-tier-project"
+  project_name = "activity"
   public_subnet = ["10.0.1.0/24", "10.0.3.0/24"]
   availability_zones_public = ["us-east-1a", "us-east-1c"]
   private_subnet = "10.0.2.0/24"
