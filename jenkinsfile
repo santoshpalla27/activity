@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+
+    environment {
+        image = "santoshpalla27/nginx:v${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Poll GitHub Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/santoshpalla27/activity.git'
+            }
+        }
+        stage('Remove Previous Build') {
+            steps {
+                sh 'docker rmi -f $(docker images -aq) || true'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${image} -f Dockerfile ."
+            }
+        }
+        stage('Scan Docker Image') {
+            steps {
+                sh "trivy image ${image} > trivy-report.txt"
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerhub', variable: 'dockerhub')]) {
+                    sh "echo ${dockerhub} | docker login -u santoshpalla27 --password-stdin"
+                    sh "docker push ${image}"
+                }
+            }
+        }
+        stage('deploy to k8s') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: ' activity-eks-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'jenkins', serverUrl: 'https://677E6481C9881719E5DEA58BCFCDABE9.gr7.us-east-1.eks.amazonaws.com']]) {
+                    sh "helm install nginx ./helm-chart"
+                }
+            }
+        }
+    }
+}

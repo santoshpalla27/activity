@@ -1,0 +1,13 @@
+replicaCount: 2
+
+deployment:
+  name: nginx-deployment
+  image: santoshpalla27/nginx:v1
+  label: nginx
+
+service:
+  name: nginx-service
+  type: LoadBalancer
+
+serviceAccount:
+  create: false

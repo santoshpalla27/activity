@@ -1,0 +1,87 @@
+---
+- name: Install Docker, Jenkins, and Trivy
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Install Docker
+      yum:
+        name: docker
+        state: present
+    
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+    
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: docker_compose_version
+      changed_when: false
+    
+    - name: Add Jenkins repository
+      get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+    
+    - name: Import Jenkins GPG key
+      rpm_key:
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+        state: present
+    
+    - name: Upgrade system packages
+      yum:
+        name: '*'
+        state: latest
+    
+    - name: Install Java 17 (Amazon Corretto)
+      yum:
+        name: java-17-amazon-corretto-devel
+        state: present
+    
+    - name: Install Jenkins
+      yum:
+        name: jenkins
+        state: present
+    
+    - name: Start and enable Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+    
+    - name: Install Trivy
+      shell: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      args:
+        creates: /usr/local/bin/trivy
+    
+    - name: Verify Trivy installation
+      command: trivy --version
+      register: trivy_version
+      changed_when: false
+  
+  handlers:
+    - name: Add Jenkins to Docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+      notify:
+        - Restart Docker
+        - Restart Jenkins
+    
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+    
+    - name: Restart Jenkins
+      systemd:
+        name: jenkins
+        state: restarted

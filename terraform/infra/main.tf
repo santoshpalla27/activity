@@ -8,6 +8,21 @@ module "vpc" {
   private_availability_zone = "us-east-1b"
 }
 
+module "iam" {
+  source = "./modules/iam"
+}
+
+module "ec2" {
+  source = "./modules/ec2"
+  instance_ami = "ami-05576a079321f21f8"
+  instance_type = "t2.medium"
+  subnet_id = module.vpc.public_subnet_id[0]
+  instance_name = "jenkins-host"
+  iam_instance_profile = module.iam.instance_profile
+  security_group_id = module.vpc.main_server_sg_id
+  key_name = "santosh"
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.31.6"
