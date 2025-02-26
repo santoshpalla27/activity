@@ -30,7 +30,7 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 withCredentials([string(credentialsId: 'dockerhub', variable: 'dockerhub')]) {
-                    sh "echo ${dockerhub} | docker login -u santoshpalla27 --password-stdin"
+                    sh "docker login -u santoshpalla27 -p ${dockerhub}"
                     sh "docker push ${image}"
                 }
             }
