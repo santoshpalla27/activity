@@ -35,12 +35,48 @@ pipeline {
                 }
             }
         }
+        stage('destroy the k8s') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: 'activity-eks-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'jenkins', serverUrl: 'https://59F730EEB80A4B34FD933ECA2E56EAC8.gr7.us-east-1.eks.amazonaws.com']]) {
+                    script {
+                        def releaseExists = sh(
+                            script: "helm list -n jenkins -q | grep -w nginx || echo 'not found'",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (releaseExists == "nginx") {
+                            sh "helm uninstall nginx -n jenkins"
+                        } else {
+                            echo "Helm release 'nginx' does not exist. Skipping uninstallation."
+                        }
+                    }
+                }
+            }
+        }
+        stage('edit the helm-chart') {
+            steps {
+                withCredentials([string(credentialsId: 'github_token', variable: 'github_token')]) {
+                    sh '''
+                        git config user.email santoshpalla2002@gmail.com"
+                        git config user.name santoshpalla27"
+                        sed -i "s#santoshpalla27/nginx:v.*#santoshpalla27/nginx:v${BUILD_NUMBER}#" helm-chart/values.yaml
+                        git add .
+                        git commit -m "Updated Docker images to version ${BUILD_NUMBER}"
+                        git push https://${github_token}@github.com/santoshpalla27/activity.git HEAD:main
+                        '''
+                }
+            }
+        }
+
+        
         stage('deploy to k8s') {
             steps {
-                withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: ' activity-eks-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'jenkins', serverUrl: 'https://677E6481C9881719E5DEA58BCFCDABE9.gr7.us-east-1.eks.amazonaws.com']]) {
-                    sh "helm install nginx ./helm-chart"
+                withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: 'activity-eks-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'jenkins', serverUrl: 'https://59F730EEB80A4B34FD933ECA2E56EAC8.gr7.us-east-1.eks.amazonaws.com']]) {
+                    sh "helm install nginx ./helm-chart -n jenkins"
                 }
             }
         }
     }
 }
+
+
